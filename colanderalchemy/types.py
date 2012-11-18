@@ -235,8 +235,8 @@ class SQLAlchemyMapping(colander.SchemaNode):
 
     def dictify_relationship(self, obj):
         dict_ = {}
-        for col in object_mapper(obj).primary_key:
-            dict_[col.name] = getattr(obj, col.name)
+        for node in SQLAlchemyMapping(type(obj)):
+            dict_[node.name] = getattr(obj, node.name)
         return dict_
 
     def clone(self):
