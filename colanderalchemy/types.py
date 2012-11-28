@@ -4,6 +4,7 @@
 #
 # This module is part of ColanderAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 try:
     from collections import OrderedDict
 
@@ -21,14 +22,21 @@ __all__ = ['SQLAlchemyMapping']
 
 class SQLAlchemyMapping(colander.SchemaNode):
 
-    def __init__(self, cls, excludes=None,
-                 includes=None, nullables=None, unknown='raise'):
+    def __init__(self, cls, excludes=None, includes=None, nullables=None, unknown='raise', **kwargs):
         """ Build a Colander Schema based on the SQLAlchemy mapped class.
         """
-        super(SQLAlchemyMapping, self).__init__(colander.Mapping(unknown))
+
+        params = {}
+        for key in kwargs.keys():
+            if key[:3] == 'ca_':
+                params[key[3:]] = kwargs.pop(key)
+        self.__dict__['params'] = params
+#        colander.SchemaNode.__init__(colander.Mapping, params)
+        super(SQLAlchemyMapping, self).__init__(colander.Mapping(unknown), **params)
 
         self.name = cls.__name__.lower()
         self.title = cls.__name__
+
 
         self._reg = MappingRegistry(cls, excludes, includes, nullables)
         for i in sorted(self._reg.ordering):
@@ -240,10 +248,13 @@ class SQLAlchemyMapping(colander.SchemaNode):
         return dict_
 
     def clone(self):
+
         cloned = self.__class__(self._reg.cls,
                                 self._reg.excludes,
                                 self._reg.includes,
-                                self._reg.nullables)
+                                self._reg.nullables,
+                                self.typ._unknown,
+                                **self.__dict__['params'])
         cloned.__dict__.update(self.__dict__)
         cloned.children = [node.clone() for node in self.children]
         return cloned
