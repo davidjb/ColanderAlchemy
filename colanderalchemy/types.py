@@ -4,6 +4,7 @@
 #
 # This module is part of ColanderAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 try:
     from collections import OrderedDict
 
@@ -21,14 +22,21 @@ __all__ = ['SQLAlchemyMapping']
 
 class SQLAlchemyMapping(colander.SchemaNode):
 
-    def __init__(self, cls, excludes=None,
-                 includes=None, nullables=None, unknown='raise'):
+    def __init__(self, cls, excludes=None, includes=None, nullables=None, unknown='raise', **kwargs):
         """ Build a Colander Schema based on the SQLAlchemy mapped class.
         """
-        super(SQLAlchemyMapping, self).__init__(colander.Mapping(unknown))
+
+        params = {}
+        for key in kwargs.keys():
+            if key[:3] == 'ca_':
+                params[key[3:]] = kwargs.pop(key)
+        self.__dict__['params'] = params
+#        colander.SchemaNode.__init__(colander.Mapping, params)
+        super(SQLAlchemyMapping, self).__init__(colander.Mapping(unknown), **params)
 
         self.name = cls.__name__.lower()
         self.title = cls.__name__
+
 
         self._reg = MappingRegistry(cls, excludes, includes, nullables)
         for i in sorted(self._reg.ordering):
@@ -47,10 +55,10 @@ class SQLAlchemyMapping(colander.SchemaNode):
                                                 name,
                                                 self._reg.nullables.get(name))
 
-            else:
+            elif not ('parent_cls' in kwargs and 'parent_name' in kwargs and kwargs['parent_name'] == name and kwargs['parent_cls'] == cls):
                 node = self.get_schema_from_rel(obj,
                                                 name,
-                                                name in self._reg.collections)
+                                                name in self._reg.collections, parent_name=name, parent_cls=cls)
             self.add(node)
 
     @property
@@ -158,7 +166,7 @@ class SQLAlchemyMapping(colander.SchemaNode):
 
         return colander.SchemaNode(type_, *children, **params)
 
-    def get_schema_from_rel(self, cls, name, uselist=False, nullable=None):
+    def get_schema_from_rel(self, cls, name, uselist=False, nullable=None, parent_name=None, parent_cls=None):
         """ Build and return a Colander SchemaNode
             using information stored in the relationship property.
         """
@@ -188,7 +196,7 @@ class SQLAlchemyMapping(colander.SchemaNode):
 
         else:
             # Map columns according to ColanderAlchemy configuration
-            mapping = SQLAlchemyMapping(cls)
+            mapping = SQLAlchemyMapping(cls, parent_name=parent_name, parent_cls=parent_cls)
             children = uselist and (mapping,) or mapping.children
 
         if nullable == False:
@@ -240,10 +248,13 @@ class SQLAlchemyMapping(colander.SchemaNode):
         return dict_
 
     def clone(self):
+
         cloned = self.__class__(self._reg.cls,
                                 self._reg.excludes,
                                 self._reg.includes,
-                                self._reg.nullables)
+                                self._reg.nullables,
+                                self.typ._unknown,
+                                **self.__dict__['params'])
         cloned.__dict__.update(self.__dict__)
         cloned.children = [node.clone() for node in self.children]
         return cloned
