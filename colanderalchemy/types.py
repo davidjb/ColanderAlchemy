@@ -59,7 +59,9 @@ class SQLAlchemyMapping(colander.SchemaNode):
                 node = self.get_schema_from_rel(obj,
                                                 name,
                                                 name in self._reg.collections, parent_name=name, parent_cls=cls)
+            else:
                 continue
+
             self.add(node)
 
     @property
