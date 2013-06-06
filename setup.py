@@ -24,7 +24,7 @@ setup(name='ColanderAlchemy',
       include_package_data=True,
       zip_safe=True,
       install_requires=[
-            'colander',
+            'colander >= 1.0a1',
             'SQLAlchemy'],
       tests_require=[],
       test_suite='tests',
